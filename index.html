@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
+<title>행운 번호 생성기 - HTML5 Safari Prototype</title>
+<style>
+  :root {
+    --bg: #eeeeee;
+    --board: #d3d3d3;
+    --grid: #efefef;
+    --label-bg: #d3d3d3;
+    --label-done: #bfe5ff;
+    --cell-bg: #d3d3d3;
+    --seg-off: #b7b7b7;
+    --seg-on: #202020;
+    --text: #222;
+    --muted: #666;
+    --panel: #e7e7e7;
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Segoe UI", sans-serif;
+  }
+
+  .app {
+    max-width: 1160px;
+    margin: 0 auto;
+    padding: 14px;
+    min-height: calc(var(--app-vh, 1vh) * 100);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .top-panel {
+    flex: 0 0 auto;
+  }
+
+  .title {
+    text-align: center;
+    font-size: 31px;
+    font-weight: 800;
+    margin: 6px 0 4px;
+  }
+
+  .desc {
+    text-align: center;
+    font-size: 14px;
+    color: #555;
+    margin-bottom: 14px;
+  }
+
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+
+  button {
+    appearance: none;
+    border: 1px solid #b9b9b9;
+    background: linear-gradient(#fafafa, #e6e6e6);
+    color: #222;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  button:disabled {
+    opacity: 0.55;
+    cursor: default;
+  }
+
+  .status {
+    margin-left: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    color: #333;
+  }
+
+  .spinner {
+    width: 16px;
+    display: inline-block;
+    text-align: center;
+  }
+
+  .board-stage {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    overflow: hidden;
+    padding: 4px 0 2px;
+  }
+
+  .board-scale-box {
+    transform-origin: top center;
+    will-change: transform;
+  }
+
+  .board {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--grid);
+    background: var(--board);
+    width: fit-content;
+    margin: 0 auto;
+  }
+
+  .row {
+    display: grid;
+    grid-template-columns: 124px repeat(6, 156px);
+  }
+
+  .label-cell,
+  .number-cell {
+    height: 102px;
+    border-right: 1px solid var(--grid);
+    border-bottom: 1px solid var(--grid);
+    background: var(--cell-bg);
+  }
+
+  .row:last-child .label-cell,
+  .row:last-child .number-cell {
+    border-bottom: 0;
+  }
+
+  .number-cell:last-child {
+    border-right: 0;
+  }
+
+  .label-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    font-weight: 800;
+    color: #222;
+    background: var(--label-bg);
+    user-select: none;
+  }
+
+  .label-cell.done {
+    background: var(--label-done);
+  }
+
+  .number-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .info-box {
+    margin-top: 12px;
+    background: var(--panel);
+    border: 1px solid #d5d5d5;
+    padding: 10px;
+    font-size: 14px;
+    flex: 0 0 auto;
+  }
+
+  .info-line + .info-line {
+    margin-top: 6px;
+  }
+
+  .muted { color: var(--muted); }
+
+  @media (max-width: 1120px) {
+    .app { max-width: 100%; }
+  }
+
+  @media (max-width: 900px) {
+    .app {
+      padding: 10px;
+    }
+
+    .title {
+      font-size: 24px;
+      margin-top: 2px;
+    }
+
+    .desc {
+      font-size: 12px;
+      margin-bottom: 10px;
+    }
+
+    .controls {
+      justify-content: center;
+      margin-bottom: 8px;
+    }
+
+    button {
+      padding: 9px 12px;
+      font-size: 14px;
+    }
+
+    .status {
+      width: 100%;
+      margin-left: 0;
+      text-align: center;
+      font-size: 14px;
+    }
+
+    .info-box {
+      margin-top: 8px;
+      padding: 8px 10px;
+      font-size: 12px;
+    }
+  }
+
+  @media (max-width: 600px) {
+    body {
+      overscroll-behavior: none;
+    }
+
+    .app {
+      padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+    }
+
+    .title {
+      font-size: 20px;
+    }
+
+    .desc {
+      font-size: 11px;
+      margin-bottom: 8px;
+    }
+
+    .controls {
+      gap: 6px;
+    }
+
+    button {
+      flex: 1 1 auto;
+      min-width: 132px;
+      padding: 9px 10px;
+      font-size: 13px;
+    }
+
+    .status {
+      font-size: 12px;
+    }
+
+    .info-box {
+      font-size: 11px;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top-panel">
+    <div class="title">행운 번호 생성기</div>
+    <div class="desc">원본 secrets 난수생성 구조를 브라우저용 보안 난수로 옮긴 Safari 로컬 단일 HTML5 프로토타입</div>
+
+    <div class="controls">
+      <button id="generateBtn">번호 생성 시작</button>
+      <button id="resetBtn">화면 초기화</button>
+      <div class="status"><span id="statusText">대기 중</span> <span id="spinnerChar" class="spinner"></span></div>
+    </div>
+  </div>
+
+  <div id="boardStage" class="board-stage">
+    <div id="boardScaleBox" class="board-scale-box">
+      <div id="board" class="board"></div>
+    </div>
+  </div>
+
+  <div class="info-box">
+    <div id="engineInfo" class="info-line">엔진 상태: 원본 py와 유사한 흐름으로 대기 중</div>
+    <div id="noteInfo" class="info-line muted">초기 화면은 회색 글씨 틀만 보입니다. 생성이 시작되면 프리뷰 롤링 후 1세트부터 순차 공개됩니다.</div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  const NUM_GENERATIONS = 111;
+  const TOTAL_SET_COUNT = 5;
+  const BALLS_PER_SET = 6;
+  const NUMBER_MIN = 1;
+  const NUMBER_MAX = 45;
+
+  const PREVIEW_INTERVAL_MS = 55;
+  const ROW_START_DELAY_MS = 700;
+  const BALL_STOP_STEP_MS = 220;
+  const MIN_SPIN_TICKS = 16;
+  const TICK_STEP_PER_CELL = 4;
+
+  const SEGMENT_MAP = {
+    '0': ['a', 'b', 'c', 'd', 'e', 'f'],
+    '1': ['b', 'c'],
+    '2': ['a', 'b', 'g', 'e', 'd'],
+    '3': ['a', 'b', 'g', 'c', 'd'],
+    '4': ['f', 'g', 'b', 'c'],
+    '5': ['a', 'f', 'g', 'c', 'd'],
+    '6': ['a', 'f', 'g', 'e', 'c', 'd'],
+    '7': ['a', 'b', 'c'],
+    '8': ['a', 'b', 'c', 'd', 'e', 'f', 'g'],
+    '9': ['a', 'b', 'c', 'd', 'f', 'g']
+  };
+
+  const boardEl = document.getElementById('board');
+  const boardStage = document.getElementById('boardStage');
+  const boardScaleBox = document.getElementById('boardScaleBox');
+  const generateBtn = document.getElementById('generateBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const statusText = document.getElementById('statusText');
+  const spinnerChar = document.getElementById('spinnerChar');
+  const engineInfo = document.getElementById('engineInfo');
+  const noteInfo = document.getElementById('noteInfo');
+
+  function cryptoRandBelow(maxExclusive) {
+    if (!(maxExclusive > 0)) throw new Error('maxExclusive must be positive');
+    const array = new Uint32Array(1);
+    const limit = Math.floor(0x100000000 / maxExclusive) * maxExclusive;
+    let value;
+    do {
+      crypto.getRandomValues(array);
+      value = array[0];
+    } while (value >= limit);
+    return value % maxExclusive;
+  }
+
+  function makeSvg(width, height) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', String(width));
+    svg.setAttribute('height', String(height));
+    svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    return svg;
+  }
+
+  function makeRect(x, y, w, h, fill) {
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('x', String(x));
+    rect.setAttribute('y', String(y));
+    rect.setAttribute('width', String(w));
+    rect.setAttribute('height', String(h));
+    rect.setAttribute('rx', '1.5');
+    rect.setAttribute('fill', fill);
+    return rect;
+  }
+
+  class SevenSegmentDisplay {
+    constructor(host) {
+      this.host = host;
+      this.svg = makeSvg(110, 78);
+      this.svg.style.display = 'block';
+      this.svg.style.overflow = 'visible';
+      this.segmentPairs = [];
+      this.buildTwoDigits();
+      this.host.appendChild(this.svg);
+    }
+
+    buildDigit(offsetX, offsetY) {
+      const w = 40;
+      const h = 74;
+      const t = Math.max(6, Math.round(w * 0.21));
+      const pad = Math.max(2, Math.round(t * 0.45));
+      const midY = offsetY + Math.floor(h / 2);
+      const upperH = Math.max(8, Math.floor((h - 3 * t) / 2));
+      const colorOff = '#b7b7b7';
+      const seg = {};
+
+      seg.a = makeRect(offsetX + pad, offsetY, w - pad * 2, t, colorOff);
+      seg.g = makeRect(offsetX + pad, midY - Math.floor(t / 2), w - pad * 2, t, colorOff);
+      seg.d = makeRect(offsetX + pad, offsetY + h - t, w - pad * 2, t, colorOff);
+      seg.f = makeRect(offsetX, offsetY + t - 1, t, upperH + 1, colorOff);
+      seg.b = makeRect(offsetX + w - t, offsetY + t - 1, t, upperH + 1, colorOff);
+      seg.e = makeRect(offsetX, midY + Math.floor(t / 2), t, offsetY + h - t + 1 - (midY + Math.floor(t / 2)), colorOff);
+      seg.c = makeRect(offsetX + w - t, midY + Math.floor(t / 2), t, offsetY + h - t + 1 - (midY + Math.floor(t / 2)), colorOff);
+
+      Object.values(seg).forEach(node => this.svg.appendChild(node));
+      return seg;
+    }
+
+    buildTwoDigits() {
+      const left = this.buildDigit(7, 2);
+      const right = this.buildDigit(57, 2);
+      this.segmentPairs.push(left, right);
+    }
+
+    clear() {
+      for (const digitMap of this.segmentPairs) {
+        for (const key in digitMap) {
+          digitMap[key].setAttribute('fill', '#b7b7b7');
+        }
+      }
+    }
+
+    setValue(value, dim) {
+      const text = String(value).padStart(2, '0');
+      const onColor = dim ? '#5b5b5b' : '#202020';
+      const offColor = '#b7b7b7';
+
+      for (let i = 0; i < this.segmentPairs.length; i += 1) {
+        const digitMap = this.segmentPairs[i];
+        const active = new Set(SEGMENT_MAP[text[i]] || []);
+        for (const key in digitMap) {
+          digitMap[key].setAttribute('fill', active.has(key) ? onColor : offColor);
+        }
+      }
+    }
+  }
+
+  class NumberCell {
+    constructor(parent) {
+      this.el = document.createElement('div');
+      this.el.className = 'number-cell';
+      this.display = new SevenSegmentDisplay(this.el);
+      this.spin_index = cryptoRandBelow(NUMBER_MAX);
+      this.locked_value = null;
+      parent.appendChild(this.el);
+      this.showPlaceholder();
+    }
+
+    showPlaceholder() {
+      this.display.clear();
+    }
+
+    reset() {
+      this.locked_value = null;
+      this.spin_index = cryptoRandBelow(NUMBER_MAX);
+      this.showPlaceholder();
+    }
+
+    drawValue(dim) {
+      const value = this.locked_value !== null ? this.locked_value : ((this.spin_index % NUMBER_MAX) + 1);
+      this.display.setValue(value, !!dim);
+    }
+
+    previewSpin() {
+      if (this.locked_value !== null) return;
+      this.spin_index = (this.spin_index + 1) % NUMBER_MAX;
+      this.drawValue(false);
+    }
+
+    fastRoll(speed) {
+      if (this.locked_value !== null) return;
+      this.spin_index = (this.spin_index + speed) % NUMBER_MAX;
+      this.drawValue(false);
+    }
+
+    lockValue(value) {
+      this.locked_value = value;
+      this.spin_index = value - 1;
+      this.drawValue(false);
+      this.flashLocked(0);
+    }
+
+    flashLocked(step) {
+      if (this.locked_value === null) return;
+      if (step >= 4) {
+        this.drawValue(false);
+        return;
+      }
+      this.drawValue(step % 2 === 1);
+      window.setTimeout(() => this.flashLocked(step + 1), 60);
+    }
+  }
+
+  class SetRow {
+    constructor(parent, index) {
+      this.index = index;
+      this.cells = [];
+      this.el = document.createElement('div');
+      this.el.className = 'row';
+
+      this.labelCell = document.createElement('div');
+      this.labelCell.className = 'label-cell';
+      this.labelCell.textContent = `${index}세트`;
+      this.el.appendChild(this.labelCell);
+
+      for (let i = 0; i < BALLS_PER_SET; i += 1) {
+        this.cells.push(new NumberCell(this.el));
+      }
+      parent.appendChild(this.el);
+    }
+
+    reset() {
+      this.labelCell.classList.remove('done');
+      for (const cell of this.cells) cell.reset();
+    }
+
+    previewRandom() {
+      for (const cell of this.cells) cell.previewSpin();
+    }
+
+    markCompleted() {
+      this.labelCell.classList.add('done');
+    }
+  }
+
+  class LottoApp {
+    constructor() {
+      this.rows = [];
+      this.generated_result = null;
+      this.animating = false;
+      this.revealing = false;
+      this.current_reveal_index = 0;
+      this.row_spin_active = Array(TOTAL_SET_COUNT).fill(false);
+      this.previewTimer = null;
+      this.worker = null;
+      this.spinnerTimer = null;
+      this.spinnerGlyphs = ['|', '/', '-', '\\'];
+      this.spinnerIndex = 0;
+
+      this.buildBoard();
+      this.bind();
+    }
+
+    buildBoard() {
+      boardEl.innerHTML = '';
+      this.rows = [];
+      for (let i = 1; i <= TOTAL_SET_COUNT; i += 1) {
+        this.rows.push(new SetRow(boardEl, i));
+      }
+      requestAnimationFrame(() => this.fitBoardToViewport());
+    }
+
+    bind() {
+      generateBtn.addEventListener('click', () => this.startGeneration());
+      resetBtn.addEventListener('click', () => this.resetView());
+
+      this.boundFitBoard = () => this.fitBoardToViewport();
+      window.addEventListener('resize', this.boundFitBoard, { passive: true });
+      window.addEventListener('orientationchange', this.boundFitBoard, { passive: true });
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', this.boundFitBoard, { passive: true });
+        window.visualViewport.addEventListener('scroll', this.boundFitBoard, { passive: true });
+      }
+    }
+
+    updateViewportHeightVar() {
+      const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+      document.documentElement.style.setProperty('--app-vh', `${vh * 0.01}px`);
+    }
+
+    fitBoardToViewport() {
+      this.updateViewportHeightVar();
+      if (!boardEl || !boardScaleBox || !boardStage) return;
+
+      boardScaleBox.style.transform = 'scale(1)';
+      boardStage.style.height = 'auto';
+
+      const boardRect = boardEl.getBoundingClientRect();
+      const stageRect = boardStage.getBoundingClientRect();
+      if (!(boardRect.width > 0) || !(boardRect.height > 0)) return;
+
+      const paddingX = 4;
+      const paddingY = 4;
+      const availableWidth = Math.max(120, stageRect.width - paddingX);
+      const availableHeight = Math.max(120, stageRect.height - paddingY);
+
+      const scaleX = availableWidth / boardRect.width;
+      const scaleY = availableHeight / boardRect.height;
+      const scale = Math.min(1, scaleX, scaleY);
+
+      boardScaleBox.style.transform = `scale(${scale})`;
+      boardScaleBox.style.width = `${boardRect.width}px`;
+      boardScaleBox.style.height = `${boardRect.height}px`;
+      boardStage.style.height = `${Math.ceil(boardRect.height * scale)}px`;
+    }
+
+    setStatus(text) {
+      statusText.textContent = text;
+    }
+
+    setSpinner(active) {
+      if (this.spinnerTimer) {
+        clearInterval(this.spinnerTimer);
+        this.spinnerTimer = null;
+      }
+      if (!active) {
+        spinnerChar.textContent = '';
+        return;
+      }
+      spinnerChar.textContent = this.spinnerGlyphs[this.spinnerIndex % this.spinnerGlyphs.length];
+      this.spinnerTimer = setInterval(() => {
+        this.spinnerIndex += 1;
+        spinnerChar.textContent = this.spinnerGlyphs[this.spinnerIndex % this.spinnerGlyphs.length];
+      }, 90);
+    }
+
+    resetView() {
+      if (this.animating || this.revealing) {
+        alert('생성 중에는 초기화할 수 없습니다.');
+        return;
+      }
+      this.generated_result = null;
+      this.current_reveal_index = 0;
+      this.row_spin_active = Array(TOTAL_SET_COUNT).fill(false);
+      this.setStatus('대기 중');
+      this.setSpinner(false);
+      engineInfo.textContent = '엔진 상태: 원본 py와 유사한 흐름으로 대기 중';
+      noteInfo.textContent = '초기 화면은 회색 글씨 틀만 보입니다. 생성이 시작되면 프리뷰 롤링 후 1세트부터 순차 공개됩니다.';
+      for (const row of this.rows) row.reset();
+      requestAnimationFrame(() => this.fitBoardToViewport());
+    }
+
+    startGeneration() {
+      if (this.worker) {
+        alert('이미 생성이 진행 중입니다.');
+        return;
+      }
+
+      this.generated_result = null;
+      this.current_reveal_index = 0;
+      this.row_spin_active = Array(TOTAL_SET_COUNT).fill(false);
+      this.animating = true;
+      this.revealing = false;
+      generateBtn.disabled = true;
+      this.setStatus('백그라운드에서 난수 생성 중...');
+      this.setSpinner(true);
+      engineInfo.textContent = '엔진 상태: window.crypto.getRandomValues() 기반 보안 난수로 세트를 계산 중';
+      noteInfo.textContent = '원본 py의 NUM_GENERATIONS, total_sets, numbers, appeared_numbers, not_appeared, candidate_set 흐름을 브라우저용으로 옮겼습니다.';
+
+      for (const row of this.rows) row.reset();
+      this.animatePreview();
+      this.startWorker();
+    }
+
+    animatePreview() {
+      if (!this.animating) return;
+
+      for (let idx = 0; idx < this.rows.length; idx += 1) {
+        if (this.revealing && idx < this.current_reveal_index) continue;
+        if (this.row_spin_active[idx]) continue;
+        this.rows[idx].previewRandom();
+      }
+
+      this.previewTimer = setTimeout(() => this.animatePreview(), PREVIEW_INTERVAL_MS);
+    }
+
+    startWorker() {
+      const workerSource = `
+        const NUM_GENERATIONS = ${NUM_GENERATIONS};
+        const TOTAL_SET_COUNT = ${TOTAL_SET_COUNT};
+        const BALLS_PER_SET = ${BALLS_PER_SET};
+        const NUMBER_MIN = ${NUMBER_MIN};
+        const NUMBER_MAX = ${NUMBER_MAX};
+
+        function randBelow(maxExclusive) {
+          const array = new Uint32Array(1);
+          const limit = Math.floor(0x100000000 / maxExclusive) * maxExclusive;
+          let value;
+          do {
+            self.crypto.getRandomValues(array);
+            value = array[0];
+          } while (value >= limit);
+          return value % maxExclusive;
+        }
+
+        class OriginalLottoEngine {
+          constructor(num_generations = NUM_GENERATIONS) {
+            this.NUM_GENERATIONS = num_generations;
+            this.spinner_chars = ['|', '/', '-', '\\\\'];
+            this.spinner_index = 0;
+            this.total_sets = [];
+          }
+
+          reset_engine() {
+            this.total_sets = [];
+            this.spinner_index = 0;
+          }
+
+          _next_spinner_char() {
+            const spinner_char = this.spinner_chars[this.spinner_index % this.spinner_chars.length];
+            this.spinner_index += 1;
+            return spinner_char;
+          }
+
+          generate_total_sets(target_count = TOTAL_SET_COUNT) {
+            this.reset_engine();
+            while (this.total_sets.length < target_count) {
+              const numbers = Array.from({ length: this.NUM_GENERATIONS }, () => randBelow(45) + 1);
+              const all_numbers = new Set(Array.from({ length: 45 }, (_, i) => i + 1));
+              const appeared_numbers = new Set(numbers);
+              const not_appeared = Array.from(all_numbers).filter(v => !appeared_numbers.has(v));
+
+              this._next_spinner_char();
+
+              if (not_appeared.length >= 6) {
+                let candidate_set = Array.from({ length: 6 }, () => not_appeared[randBelow(not_appeared.length)]).sort((a, b) => a - b);
+                candidate_set = Array.from(new Set(candidate_set)).sort((a, b) => a - b);
+                if (candidate_set.length < 6) {
+                  continue;
+                }
+                const exists = this.total_sets.some(row => row.length === candidate_set.length && row.every((v, i) => v === candidate_set[i]));
+                if (!exists) {
+                  this.total_sets.push(candidate_set);
+                }
+              }
+            }
+            return this.total_sets.map(row => row.slice());
+          }
+        }
+
+        self.onmessage = function (event) {
+          if (!event || !event.data || event.data.type !== 'generate') return;
+          try {
+            const engine = new OriginalLottoEngine();
+            const total_sets = engine.generate_total_sets();
+            self.postMessage({ type: 'done', total_sets });
+          } catch (error) {
+            self.postMessage({ type: 'error', message: String(error && error.message ? error.message : error) });
+          }
+        };
+      `;
+
+      const blob = new Blob([workerSource], { type: 'application/javascript' });
+      this.worker = new Worker(URL.createObjectURL(blob));
+
+      this.worker.onmessage = (event) => {
+        const data = event.data || {};
+        if (data.type === 'done') {
+          this.generated_result = { total_sets: data.total_sets };
+          this.revealing = true;
+          this.setStatus('난수 생성 완료. 1세트부터 순차 공개합니다...');
+          engineInfo.textContent = '엔진 상태: 보안 난수 생성 완료';
+          noteInfo.textContent = '완료된 세트는 왼쪽 라벨이 하늘색으로 바뀝니다.';
+          this.disposeWorker();
+          setTimeout(() => this.revealNextRow(), 220);
+        } else if (data.type === 'error') {
+          this.animating = false;
+          this.revealing = false;
+          this.disposeWorker();
+          this.setSpinner(false);
+          this.setStatus('오류 발생');
+          generateBtn.disabled = false;
+          alert(data.message || '알 수 없는 오류');
+        }
+      };
+
+      this.worker.postMessage({ type: 'generate' });
+    }
+
+    disposeWorker() {
+      if (this.worker) {
+        this.worker.terminate();
+        this.worker = null;
+      }
+    }
+
+    revealNextRow() {
+      if (!this.generated_result) return;
+
+      if (this.current_reveal_index >= this.generated_result.total_sets.length) {
+        this.animating = false;
+        this.revealing = false;
+        this.setSpinner(false);
+        generateBtn.disabled = false;
+        this.setStatus('완료');
+        engineInfo.textContent = '엔진 상태: 공개 완료';
+        noteInfo.textContent = 'Safari 로컬 단일 HTML5 프로토타입 완료';
+        return;
+      }
+
+      const rowIndex = this.current_reveal_index;
+      const numberSet = this.generated_result.total_sets[rowIndex];
+      this.row_spin_active[rowIndex] = true;
+      this.setStatus(`${rowIndex + 1}세트 공개 중...`);
+      this.spinRowUntilStop(rowIndex, numberSet, 0, 0);
+    }
+
+    spinRowUntilStop(rowIndex, numberSet, cellIndex, tick) {
+      const row = this.rows[rowIndex];
+
+      for (let i = 0; i < row.cells.length; i += 1) {
+        const cell = row.cells[i];
+        if (i < cellIndex) {
+          cell.lockValue(numberSet[i]);
+        } else {
+          const speed = Math.max(1, 4 - Math.min(3, Math.floor(tick / 4)));
+          cell.fastRoll(speed);
+        }
+      }
+
+      const threshold = MIN_SPIN_TICKS + (cellIndex * TICK_STEP_PER_CELL);
+      const delay = Math.min(90, 24 + (tick * 3));
+
+      if (tick >= threshold) {
+        row.cells[cellIndex].lockValue(numberSet[cellIndex]);
+        if (cellIndex + 1 < BALLS_PER_SET) {
+          setTimeout(() => this.spinRowUntilStop(rowIndex, numberSet, cellIndex + 1, 0), BALL_STOP_STEP_MS);
+        } else {
+          this.row_spin_active[rowIndex] = false;
+          row.markCompleted();
+          this.current_reveal_index += 1;
+          this.setStatus(`${rowIndex + 1}세트 공개 완료`);
+          setTimeout(() => this.revealNextRow(), ROW_START_DELAY_MS);
+        }
+        return;
+      }
+
+      setTimeout(() => this.spinRowUntilStop(rowIndex, numberSet, cellIndex, tick + 1), delay);
+    }
+  }
+
+  const app = new LottoApp();
+  app.resetView();
+  requestAnimationFrame(() => app.fitBoardToViewport());
+  setTimeout(() => app.fitBoardToViewport(), 120);
+})();
+</script>
+</body>
+</html>
